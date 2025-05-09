@@ -1,0 +1,15 @@
+# Android Studio / IntelliJ
+*.iml
+.gradle
+.idea
+.kotlin
+.DS_Store
+/build
+/**/build/
+/captures
+/**/res
+.externalNativeBuild
+.cxx
+local.properties
+*.env
+**/*.log

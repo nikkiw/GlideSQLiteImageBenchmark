@@ -1,0 +1,75 @@
+[versions]
+agp = "8.10.0"
+kotlin = "2.1.10"
+ksp = "2.1.10-1.0.30"
+coreKtx = "1.16.0"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+appcompat = "1.7.0"
+material = "1.12.0"
+activity = "1.10.1"
+constraintlayout = "2.2.1"
+room = "2.7.1"
+sqlite = "2.5.0"
+glide = "4.15.1"
+coroutines="1.10.1"
+lifecycle="2.8.7"
+pods4k = "0.7.0"
+okio = "3.11.0"
+benchmark = "1.2.4"
+runner = "1.5.2"
+benchmarkJunit4 = "1.2.4"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+pods4k = { group = "com.danrusu.pods4k", name= "pods4k", version.ref="pods4k"}
+
+# room
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+room-common = { group = "androidx.room", name = "room-common", version.ref = "room" }
+room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "room" }
+room-paging = { group = "androidx.room", name = "room-paging",  version.ref = "room"}
+
+# sqlite
+sqlite-framework ={ group = "androidx.sqlite", name = "sqlite-framework",  version.ref = "sqlite"}
+sqlite-ktx={ group = "androidx.sqlite", name = "sqlite-ktx",  version.ref = "sqlite"}
+sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
+
+# glide
+glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+glide-ksp = { group = "com.github.bumptech.glide", name = "ksp", version.ref = "glide" }
+glide-cronet = { group = "com.github.bumptech.glide", name = "cronet-integration", version.ref = "glide" }
+#glide-okhttp = { group = "com.github.bumptech.glide", name = "okhttp3-integration", version.ref = "glide" }
+glide-recyclerview = { group = "com.github.bumptech.glide", name = "recyclerview-integration", version.ref = "glide" }
+
+# coroutines
+coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref="coroutines" }
+coroutines-test =  { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref="coroutines" }
+
+# lifecycle
+lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref="lifecycle" }
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref="lifecycle" }
+
+
+# okio
+okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio"}
+androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
+androidx-benchmark-junit4 = { group = "androidx.benchmark", name = "benchmark-junit4", version.ref = "benchmarkJunit4" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+benchmark = { id = "androidx.benchmark", version.ref = "benchmark" }

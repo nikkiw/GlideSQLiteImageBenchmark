@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- This lets you share any file in getExternalFilesDir(null) -->
+    <external-files-path
+        name="external_files"
+        path="." />
+</paths>
