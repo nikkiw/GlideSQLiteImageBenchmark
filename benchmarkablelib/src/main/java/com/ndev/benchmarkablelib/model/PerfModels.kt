@@ -1,15 +1,15 @@
 package com.ndev.benchmarkablelib.model
 
 data class PerformanceResult(
-    val sourceType: String, // "FILE" или "BLOB"
+    val sourceType: String, // "FILE" or "BLOB"
     val fileName: String,
-    val fileSize: Long, // размер в байтах
-    val loadTimeMs: Double, // время загрузки в миллисекундах
-    val iteration: Int, // номер итерации
-    val success: Boolean // успешна ли загрузка
+    val fileSize: Long, // size in bytes
+    val loadTimeMs: Double, // loading time in milliseconds
+    val iteration: Int, // iteration number
+    val success: Boolean // whether loading was successful
 )
 
-// Класс для статистики по результатам
+// Class for statistics on results
 class PerformanceStatistics(private val results: List<PerformanceResult>) {
 
     fun getAverageLoadTime(): Double {

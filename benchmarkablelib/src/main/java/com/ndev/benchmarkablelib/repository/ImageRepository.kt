@@ -16,38 +16,38 @@ class ImageRepository(
     private val appDatabase: AppDatabase = AppDatabase.getDatabase(context),
     private val imageDao: ImageDao = appDatabase.imageDao()
 ) {
-    // Сохранение изображения в базу данных и на диск
+    // Save image to database and disk
     suspend fun saveImage(name: String, imageData: ByteArray): Pair<Long, File> =
         withContext(Dispatchers.IO) {
-            // Сохраняем в базу данных
+            // Save to database
             val imageEntity = ImageEntity(name = name, blobData = imageData)
             val id = imageDao.insertImage(imageEntity)
 
-            // Сохраняем на диск
+            // Save to disk
             val file = FileUtils.saveImageToFile(context, name, imageData)
 
             Pair(id, file)
         }
 
-    // Сохранение изображения в базу данных и на диск
+    // Save image to database and disk with specified ID
     suspend fun saveImage(id: Long, name: String, imageData: ByteArray): Pair<Long, File> =
         withContext(Dispatchers.IO) {
-            // Сохраняем в базу данных
+            // Save to database
             val imageEntity = ImageEntity(id = id, name = name, blobData = imageData)
             val id = imageDao.insertImage(imageEntity)
 
-            // Сохраняем на диск
+            // Save to disk
             val file = FileUtils.saveImageToFile(context, name, imageData)
 
             Pair(id, file)
         }
 
-    // Получение изображения из базы данных по ID
+    // Get image blob from database by ID
     suspend fun getImageBlobById(id: Long): ByteArray? = withContext(Dispatchers.IO) {
         imageDao.getImageById(id)?.blobData
     }
 
-    // Получение изображения из базы данных по имени
+    // Get image blob from database by name
     suspend fun getImageBlobByName(name: String): ByteArray? = withContext(Dispatchers.IO) {
         imageDao.getImageByName(name)?.blobData
     }
@@ -57,12 +57,12 @@ class ImageRepository(
     }
 
 
-    // Получение файла изображения по имени
+    // Get image file by name
     fun getImageFile(name: String): File {
         return File(context.filesDir, name)
     }
 
-    // Загрузка тестовых изображений из ресурсов приложения
+    // Load test images from app resources
     suspend fun loadTestImages(imageResIds: List<Int>): List<Triple<Long, String, File>> =
         withContext(Dispatchers.IO) {
             val results = mutableListOf<Triple<Long, String, File>>()
@@ -89,7 +89,7 @@ class ImageRepository(
     }
 
 
-    // Очистка всех изображений
+    // Clear all images
     suspend fun clearAllImages() = withContext(Dispatchers.IO) {
         imageDao.deleteAllImages()
         context.filesDir.listFiles()?.filter {

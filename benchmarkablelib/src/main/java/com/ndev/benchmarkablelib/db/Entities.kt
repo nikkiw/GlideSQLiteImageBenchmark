@@ -56,19 +56,19 @@ class CustomOpenHelperFactory : SupportSQLiteOpenHelper.Factory {
                 override fun onConfigure(db: SupportSQLiteDatabase) {
                     Log.d("AppDatabase", "onConfigure")
 
-                    // Установим page_size до создания таблиц
+                    // Set page_size before creating tables
                     db.query("PRAGMA page_size = 8192;").moveToFirst()
                     db.query("PRAGMA cache_size = -2000;")
-                        .moveToFirst()   // “-2000” — 2000 страниц × 32768 байт = ~64 МБ кэша
+                        .moveToFirst()   // "-2000" — 2000 pages × 32768 bytes = ~64 MB cache
                     db.query("PRAGMA temp_store = MEMORY;")
-                        .moveToFirst() // временные таблицы/индексы в RAM
-                    db.query("PRAGMA mmap_size = 268435456;").moveToFirst() // например, 256 МБ
+                        .moveToFirst() // temporary tables/indices in RAM
+                    db.query("PRAGMA mmap_size = 268435456;").moveToFirst() // for example, 256 MB
                     db.query("VACUUM;")
                     configuration.callback.onConfigure(db)
                 }
 
                 override fun onCreate(db: SupportSQLiteDatabase) {
-                    // VACUUM для применения page_size
+                    // VACUUM to apply page_size
                     Log.d("AppDatabase", "onCreate")
 
                     configuration.callback.onCreate(db)
@@ -137,42 +137,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     dbName
                 )
-                    //.openHelperFactory(CustomOpenHelperFactory())
                     .setDriver(BundledSQLiteDriver())
-//                    .setQueryCoroutineContext(Dispatchers.IO)
                     .build()
 
-//                // Verify the setting
-//                val db = (instance as RoomDatabase).openHelper.writableDatabase
-//                var cursor = db.query("SELECT sqlite_version()")
-//                if (cursor.moveToFirst()) {
-//                    val pageSize = cursor.getInt(0)
-//                    Log.d("AppDatabase", "sqlite_version is: $pageSize")
-//                }
-//
-//                cursor = db.query("PRAGMA page_size")
-//                if (cursor.moveToFirst()) {
-//                    val pageSize = cursor.getInt(0)
-//                    Log.d("AppDatabase", "Page size set to: $pageSize")
-//                }
-//
-//                cursor = db.query("PRAGMA cache_size")
-//                if (cursor.moveToFirst()) {
-//                    val pageSize = cursor.getInt(0)
-//                    Log.d("AppDatabase", "cache_size set to: $pageSize")
-//                }
-//
-//                cursor = db.query("PRAGMA temp_store")
-//                if (cursor.moveToFirst()) {
-//                    val pageSize = cursor.getInt(0)
-//                    Log.d("AppDatabase", "temp_store set to: $pageSize")
-//                }
-//
-//                cursor = db.query("PRAGMA mmap_size")
-//                if (cursor.moveToFirst()) {
-//                    val pageSize = cursor.getInt(0)
-//                    Log.d("AppDatabase", "mmap_size set to: $pageSize")
-//                }
+
                 INSTANCE = instance
                 instance
             }
@@ -180,7 +148,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
-// Утилитарный класс для работы с файлами изображений
+// Utility class for working with image files
 object FileUtils {
     fun saveImageToFile(
         context: android.content.Context,

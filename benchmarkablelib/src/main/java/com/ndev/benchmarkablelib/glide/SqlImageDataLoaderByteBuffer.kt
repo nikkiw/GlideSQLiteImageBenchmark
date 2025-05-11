@@ -1,5 +1,6 @@
 package com.ndev.benchmarkablelib.glide
 
+import android.util.Log
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.Options
@@ -19,66 +20,69 @@ import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import kotlin.coroutines.cancellation.CancellationException
 
-class SqlImageDataFetcher(
+class SqlImageDataFetcherByteBuffer(
     private val model: SqlImageData,
     private val repository: ImageRepository
 ) : DataFetcher<ByteBuffer> {
 
-    // Добавляем Job для возможности отмены корутины
+    companion object {
+        private const val TAG = "SqlImageDataFetcher"
+    }
+
+    // Add Job for coroutine cancellation
     private var job: Job? = null
-    // Добавляем переменную для хранения буфера
+
+    // Add variable to store buffer
     private var buffer: ByteBuffer? = null
 
     @Throws(Exception::class)
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in ByteBuffer>) {
-        // Создаем обработчик исключений
+        // Create exception handler
         val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-            // Игнорируем CancellationException, так как это ожидаемое поведение при отмене
+            // Ignore CancellationException as it's expected behavior when cancelling
             if (throwable !is CancellationException) {
                 callback.onLoadFailed(throwable as java.lang.Exception)
             }
         }
 
-        // Создаем job для управления жизненным циклом корутины с обработчиком исключений
+        // Create job for managing coroutine lifecycle with exception handler
         job = CoroutineScope(Dispatchers.IO + exceptionHandler).launch {
-            // Проверяем, не отменена ли корутина
+            // Check if coroutine is not cancelled
             ensureActive()
 
             val blobData = repository.getImageBlobByName(model.imageName)
                 ?: throw RuntimeException("SqlImageDataFetcher: get image blob failed (name=${model.imageName})")
 
-            // Проверка отмены перед выделением памяти
+            // Check cancellation before allocating memory
             ensureActive()
 
-            // 1. Выделяем direct-буфер
-            val newBuffer = ByteBuffer.allocateDirect(blobData.size)
-            // 2. Копируем в него данные
-            newBuffer.put(blobData)
-            // 3. Подготовка к чтению
-            newBuffer.flip()
+//            // 1. Allocate direct buffer
+//            val newBuffer = ByteBuffer.allocateDirect(blobData.size)
+//            // 2. Copy data into it
+//            newBuffer.put(blobData)
+//            // 3. Prepare for reading
+//            newBuffer.flip()
 
-            // Сохраняем ссылку на буфер для возможности очистки
-            buffer = newBuffer
 
-            // Проверка отмены перед вызовом callback
+            // Store buffer reference for cleanup
+//            buffer = newBuffer
+            buffer = ByteBuffer.wrap(blobData)
+            // Check cancellation before calling callback
             ensureActive()
 
-            // Вызываем callback только если задача не была отменена
-            callback.onDataReady(newBuffer)
+            // Only call callback if task wasn't cancelled
+            callback.onDataReady(buffer)
         }
     }
 
     override fun cleanup() {
-        // Очищаем ресурсы ByteBuffer
-        buffer?.let {
-            // Для direct-буфера нет явных методов очистки в JVM,
-            // но можно установить ссылку в null для сборщика мусора
-            buffer = null
-        }
+        // Clean up ByteBuffer resources
+        buffer = null
     }
 
     override fun cancel() {
-        // Отменяем корутину при вызове cancel
+        Log.d(TAG, "cancel")
+        // Cancel coroutine when cancel is called
         job?.cancel()
         job = null
     }
@@ -88,7 +92,7 @@ class SqlImageDataFetcher(
     override fun getDataSource(): DataSource = DataSource.LOCAL
 }
 
-class SqlImageModelLoader(
+class SqlImageModelLoaderByteBuffer(
     private val repository: ImageRepository
 ) : ModelLoader<SqlImageData, ByteBuffer> {
     override fun buildLoadData(
@@ -97,22 +101,24 @@ class SqlImageModelLoader(
         height: Int,
         options: Options
     ): ModelLoader.LoadData<ByteBuffer> {
-        // Мы используем ObjectKey, поскольку наша сигнатура не изменилась
+        // We use ObjectKey since our signature hasn't changed
         return ModelLoader.LoadData(
             ObjectKey(model.imageName),
-            SqlImageDataFetcher(model, repository)
+            SqlImageDataFetcherByteBuffer(model, repository)
         )
     }
 
     override fun handles(model: SqlImageData): Boolean = true
 }
 
-class SqlImageModelLoaderFactory(
+class SqlImageModelLoaderFactoryByteBuffer(
     private val repository: ImageRepository
 ) : ModelLoaderFactory<SqlImageData, ByteBuffer> {
     override fun build(multiFactory: MultiModelLoaderFactory): ModelLoader<SqlImageData, ByteBuffer> {
-        return SqlImageModelLoader(repository)
+        return SqlImageModelLoaderByteBuffer(repository)
     }
 
-    override fun teardown() = Unit
+    override fun teardown() {
+        // Nothing to clean up
+    }
 }

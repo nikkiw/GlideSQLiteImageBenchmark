@@ -61,12 +61,12 @@ object TestAssetsHelper {
 
             val bitmap = createTestBitmap(size, size, i)
 
-            // Сжимаем bitmap ОДИН раз в байтовый поток
+            // Compress bitmap ONCE to byte stream
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
             val data: ByteArray = outputStream.toByteArray()
 
-            // Записываем тот же байтовый массив в файл
+            // Write the same byte array to file
             val file = File(context.filesDir, "test_image_$i.jpg")
             file.writeBytes(data)
 
@@ -77,7 +77,4 @@ object TestAssetsHelper {
 
         return blobs
     }
-
-
-
 }

@@ -12,14 +12,14 @@ import com.ndev.benchmarkablelib.db.AppDatabase
 import com.ndev.benchmarkablelib.glide.BlobDataModelLoaderFactory
 import com.ndev.benchmarkablelib.glide.BlobDataModelLoaderFactoryOkio
 import com.ndev.benchmarkablelib.glide.ByteArrayModelLoaderFactoryDirect
-import com.ndev.benchmarkablelib.glide.SqlImageModelLoaderFactory
+import com.ndev.benchmarkablelib.glide.SqlImageModelLoaderFactoryByteBuffer
+import com.ndev.benchmarkablelib.glide.SqlImageModelLoaderFactoryInputStream
 import com.ndev.benchmarkablelib.model.BlobData
 import com.ndev.benchmarkablelib.model.SqlImageData
 import com.ndev.benchmarkablelib.performance.GlidePerformanceTester
 import com.ndev.benchmarkablelib.repository.ImageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.AfterClass
@@ -91,96 +91,106 @@ class ImprovedGlidePerformanceBenchmark {
     @After
     fun tearDownCache() {
         runBlocking {
+            Glide.tearDown()
             clearGlideCache()
         }
     }
 
     @Test
-    fun load_single_image_from_file() {
+    fun load_sequentially_from_files_hardware_off() {
         benchmarkRule.measureRepeated {
-            runTest {
+            runBlocking {
                 tester.testFileLoading(
-                    imageFiles = listOf(testImageFiles.first())
+                    imageFiles = testImageFiles,
+                    isHardwareBitmap = false
                 )
             }
         }
     }
 
     @Test
-    fun load_single_blob_image_using_default_loader() {
-        runBlobSingleImageTest(
-            BlobData::class.java,
-            InputStream::class.java,
-            BlobDataModelLoaderFactory()
-        )
-    }
-
-    @Test
-    fun load_single_blob_image_using_okio_loader() {
-        runBlobSingleImageTest(
-            BlobData::class.java,
-            InputStream::class.java,
-            BlobDataModelLoaderFactoryOkio()
-        )
-    }
-
-    @Test
-    fun load_single_blob_image_using_direct_bytebuffer_loader() {
-        runBlobSingleImageTest(
-            BlobData::class.java,
-            ByteBuffer::class.java,
-            ByteArrayModelLoaderFactoryDirect()
-        )
-    }
-
-    @Test
-    fun load_single_sql_image_blob() {
-        runBlobSingleImageTest(
-            SqlImageData::class.java,
-            ByteBuffer::class.java,
-            SqlImageModelLoaderFactory(repository)
-        )
-    }
-
-    private fun <Model, Data> runBlobSingleImageTest(
-        model: Class<Model>,
-        dataClass: Class<Data>,
-        factory: ModelLoaderFactory<Model, Data>
-    ) {
+    fun load_sequentially_from_files_hardware_on() {
         benchmarkRule.measureRepeated {
-            runWithTimingDisabled {
-                Glide.get(context)
-                    .registry.prepend(
-                        model,
-                        dataClass,
-                        factory
-                    )
-            }
-
-            runTest {
-                tester.testBlobLoading(
-                    imageIds = listOf(testImageIds.first()),
-                    imageNames = listOf(testImageNames.first()),
-                    model = model
+            runBlocking {
+                tester.testFileLoading(
+                    imageFiles = testImageFiles,
+                    isHardwareBitmap = true
                 )
             }
         }
     }
 
     @Test
-    fun load_multiple_images_from_files_in_parallel() {
+    fun load_parallel_from_files_hardware_off() {
         benchmarkRule.measureRepeated {
-            runTest {
+            runBlocking {
                 tester.testParallelFileLoading(
-                    imageFiles = testImageFiles
+                    imageFiles = testImageFiles,
+                    isHardwareBitmap = false
                 )
             }
         }
     }
 
     @Test
-    fun load_multiple_blob_images_in_parallel_using_default_loader() {
-        runBlobParallelTest(
+    fun load_parallel_from_files_hardware_on() {
+        benchmarkRule.measureRepeated {
+            runBlocking {
+                tester.testParallelFileLoading(
+                    imageFiles = testImageFiles,
+                    isHardwareBitmap = true
+                )
+            }
+        }
+    }
+
+
+    @Test
+    fun load_sequentially_from_byte_array_hardware_off() {
+        runLoadSequentiallyCustomDataImageTest(
+            ByteArray::class.java,
+            ByteArray::class.java,
+            null,
+            false
+        )
+    }
+
+    @Test
+    fun load_sequentially_from_byte_array_hardware_on() {
+        runLoadSequentiallyCustomDataImageTest(
+            ByteArray::class.java,
+            ByteArray::class.java,
+            null,
+            true
+        )
+    }
+
+
+    @Test
+    fun load_parallel_from_byte_array_hardware_off() {
+        runLoadParallelCustomDataImageTest(
+            ByteArray::class.java,
+            ByteArray::class.java,
+            null,
+            false
+        )
+    }
+
+
+    @Test
+    fun load_parallel_from_byte_array_hardware_on() {
+        runLoadParallelCustomDataImageTest(
+            ByteArray::class.java,
+            ByteArray::class.java,
+            null,
+            true
+        )
+    }
+
+
+    @Test
+    fun load_sequentially_from_blob_data_using_default_loader() {
+        runLoadSequentiallyCustomDataImageTest(
             BlobData::class.java,
             InputStream::class.java,
             BlobDataModelLoaderFactory()
@@ -188,8 +198,17 @@ class ImprovedGlidePerformanceBenchmark {
     }
 
     @Test
-    fun load_multiple_blob_images_in_parallel_using_okio_loader() {
-        runBlobParallelTest(
+    fun load_parallel_from_blob_data_using_default_loader() {
+        runLoadParallelCustomDataImageTest(
+            BlobData::class.java,
+            InputStream::class.java,
+            BlobDataModelLoaderFactory()
+        )
+    }
+
+    @Test
+    fun load_sequentially_from_blob_data_using_okio_loader() {
+        runLoadSequentiallyCustomDataImageTest(
             BlobData::class.java,
             InputStream::class.java,
             BlobDataModelLoaderFactoryOkio()
@@ -197,8 +216,17 @@ class ImprovedGlidePerformanceBenchmark {
     }
 
     @Test
-    fun load_multiple_blob_images_in_parallel_using_direct_bytebuffer_loader() {
-        runBlobParallelTest(
+    fun load_parallel_from_blob_data_using_okio_loader() {
+        runLoadParallelCustomDataImageTest(
+            BlobData::class.java,
+            InputStream::class.java,
+            BlobDataModelLoaderFactoryOkio()
+        )
+    }
+
+    @Test
+    fun load_sequentially_from_blob_data_using_direct_bytebuffer_loader() {
+        runLoadSequentiallyCustomDataImageTest(
             BlobData::class.java,
             ByteBuffer::class.java,
             ByteArrayModelLoaderFactoryDirect()
@@ -206,34 +234,104 @@ class ImprovedGlidePerformanceBenchmark {
     }
 
     @Test
-    fun load_multiple_sql_image_blobs_in_parallel() {
-        runBlobParallelTest(
-            SqlImageData::class.java,
+    fun load_parallel_from_blob_data_using_direct_bytebuffer_loader() {
+        runLoadParallelCustomDataImageTest(
+            BlobData::class.java,
             ByteBuffer::class.java,
-            SqlImageModelLoaderFactory(repository)
+            ByteArrayModelLoaderFactoryDirect()
         )
     }
 
-    private fun <Model, Data> runBlobParallelTest(
+    @Test
+    fun load_sequentially_from_sql_image_data_to_byte_buffer() {
+        runLoadSequentiallyCustomDataImageTest(
+            SqlImageData::class.java,
+            ByteBuffer::class.java,
+            SqlImageModelLoaderFactoryByteBuffer(repository)
+        )
+    }
+
+    @Test
+    fun load_parallel_from_sql_image_data_to_byte_buffer() {
+        runLoadParallelCustomDataImageTest(
+            SqlImageData::class.java,
+            ByteBuffer::class.java,
+            SqlImageModelLoaderFactoryByteBuffer(repository)
+        )
+    }
+
+    @Test
+    fun load_sequentially_from_sql_image_data_to_input_stream() {
+        runLoadSequentiallyCustomDataImageTest(
+            SqlImageData::class.java,
+            InputStream::class.java,
+            SqlImageModelLoaderFactoryInputStream(repository)
+        )
+    }
+
+
+    @Test
+    fun load_parallel_from_sql_image_data_to_input_stream() {
+        runLoadParallelCustomDataImageTest(
+            SqlImageData::class.java,
+            InputStream::class.java,
+            SqlImageModelLoaderFactoryInputStream(repository)
+        )
+    }
+
+    private fun <Model, Data> runLoadSequentiallyCustomDataImageTest(
         model: Class<Model>,
-        dataClass: Class<Data>,
-        factory: ModelLoaderFactory<Model, Data>
+        dataClass: Class<Data>?,
+        factory: ModelLoaderFactory<Model, Data>?,
+        isHardwareBitmap: Boolean = false
     ) {
         benchmarkRule.measureRepeated {
             runWithTimingDisabled {
-                Glide.get(context)
-                    .registry.prepend(
-                        model,
-                        dataClass,
-                        factory
-                    )
+                if (dataClass != null && factory != null) {
+                    Glide.get(context)
+                        .registry.prepend(
+                            model,
+                            dataClass,
+                            factory
+                        )
+                }
             }
 
-            runTest {
+            runBlocking {
+                tester.testBlobLoading(
+                    imageIds = testImageIds,
+                    imageNames = testImageNames,
+                    model = model,
+                    isHardwareBitmap = isHardwareBitmap
+                )
+            }
+        }
+    }
+
+    private fun <Model, Data> runLoadParallelCustomDataImageTest(
+        model: Class<Model>,
+        dataClass: Class<Data>?,
+        factory: ModelLoaderFactory<Model, Data>?,
+        isHardwareBitmap: Boolean = false
+    ) {
+        benchmarkRule.measureRepeated {
+            runWithTimingDisabled {
+                if (dataClass != null && factory != null) {
+                    Glide.get(context)
+                        .registry.prepend(
+                            model,
+                            dataClass,
+                            factory
+                        )
+                }
+            }
+
+            runBlocking {
                 tester.testParallelBlobLoading(
                     imageIds = testImageIds,
                     imageNames = testImageNames,
-                    model = model
+                    model = model,
+                    isHardwareBitmap = isHardwareBitmap
                 )
             }
         }

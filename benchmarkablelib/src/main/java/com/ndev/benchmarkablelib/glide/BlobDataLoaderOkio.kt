@@ -15,7 +15,7 @@ import okio.BufferedSource
 import java.io.IOException
 import java.io.InputStream
 
-// DataFetcher с поддержкой отмены и использованием Okio для buffer-операций
+// DataFetcher with cancellation support and using Okio for buffer operations
 class BlobDataFetcherOkio(
     private val model: BlobData
 ) : DataFetcher<InputStream> {
@@ -34,7 +34,7 @@ class BlobDataFetcherOkio(
         }
 
         try {
-            // Используем Okio для эффективного буферного чтения
+            // Use Okio for efficient buffered reading
             stream = Buffer().write(model.data)
             val inputStream = stream!!.inputStream()
 
@@ -45,13 +45,8 @@ class BlobDataFetcherOkio(
             }
 
             callback.onDataReady(inputStream)
-        }
-//        catch (oom: OutOfMemoryError) {
-//            Log.e("BlobDataFetcher", "OOM при выделении буфера", oom)
-//            callback.onLoadFailed(oom)
-//        }
-        catch (e: Exception) {
-            Log.e("BlobDataFetcher", "Ошибка загрузки BlobData", e)
+        } catch (e: Exception) {
+            Log.e("BlobDataFetcher", "Error loading BlobData", e)
             callback.onLoadFailed(e)
         }
     }
@@ -60,7 +55,7 @@ class BlobDataFetcherOkio(
         try {
             stream?.close()
         } catch (ignored: IOException) {
-            // Игнорируем ошибки при закрытии
+            // Ignore errors during cleanup
         }
     }
 
@@ -73,7 +68,7 @@ class BlobDataFetcherOkio(
     override fun getDataSource(): DataSource = DataSource.LOCAL
 }
 
-// ModelLoader и фабрика для него
+// ModelLoader and its factory
 class BlobDataModelLoaderOkio : ModelLoader<BlobData, InputStream> {
     override fun buildLoadData(
         model: BlobData,
@@ -92,5 +87,7 @@ class BlobDataModelLoaderFactoryOkio : ModelLoaderFactory<BlobData, InputStream>
         return BlobDataModelLoaderOkio()
     }
 
-    override fun teardown() = Unit
+    override fun teardown() {
+        // Nothing to clean up
+    }
 }

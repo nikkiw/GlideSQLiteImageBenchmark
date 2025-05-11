@@ -1,13 +1,14 @@
 package com.ndev.benchmarkablelib.performance
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
-//import android.util.Log
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.bitmap.Downsampler
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import com.ndev.benchmarkablelib.model.BlobData
@@ -21,75 +22,88 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
+
+fun Bitmap?.requireValid(): Bitmap {
+    if (this == null || isRecycled || width <= 0 || height <= 0) {
+        throw IllegalStateException("Invalid Bitmap: null, recycled or has zero dimensions")
+    }
+    return this
+}
 
 class GlidePerformanceTester(
     private val context: Context,
     private val repository: ImageRepository
 ) {
-    // Тестирование загрузки из файла
+    /**
+     * Load each file synchronously into a Bitmap without caching.
+     */
     suspend fun testFileLoading(
-        imageFiles: List<File>
+        imageFiles: List<File>,
+        isHardwareBitmap: Boolean
     ) = withContext(Dispatchers.Default) {
         for (file in imageFiles) {
-//            Log.d(TAG, "Starting tests for file: ${file.name}, size=${file.length()} bytes")
-
-            // Glide: без ImageView, сразу в Bitmap
             Glide.with(context)
                 .asBitmap()
-                .load(file.absolutePath)
-                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .set(Downsampler.ALLOW_HARDWARE_CONFIG, isHardwareBitmap)
                 .skipMemoryCache(true)
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .load(file.absolutePath)
                 .submit()
-                .get(1, TimeUnit.SECONDS)
+                .get()
+                .requireValid()
         }
     }
 
-
-    // Тестирование загрузки из BLOB
+    /**
+     * Load images from various data models (BlobData, ByteArray, or SqlImageData).
+     */
     suspend fun <Model> testBlobLoading(
         imageIds: List<Long>,
         imageNames: List<String>,
-        model: Class<Model>
+        model: Class<Model>,
+        isHardwareBitmap: Boolean
     ) = withContext(Dispatchers.Default) {
-
-        // Тестируем каждое изображение
         for (i in imageIds.indices) {
             val id = imageIds[i]
             val name = imageNames[i]
-//            Log.d(TAG, "testBlobLoading name=$name")
-            val data = if (model == BlobData::class.java) {
-                val imageBlob =
+            val data = when (model) {
+                BlobData::class.java -> {
+                    val imageBlob = repository.getImageBlobByName(name)
+                        ?: throw RuntimeException("Failed to retrieve blob (id=$id, name=$name)")
+                    BlobData(id, imageBlob)
+                }
+                ByteArray::class.java -> {
                     repository.getImageBlobByName(name)
-                        ?: throw RuntimeException("get image blob failed (id=$id, name=$name)")
-                BlobData(id, imageBlob)
-            } else {
-                SqlImageData(name)
+                        ?: throw RuntimeException("Failed to retrieve blob (id=$id, name=$name)")
+                }
+                else -> SqlImageData(name)
             }
+
             Glide.with(context)
                 .asBitmap()
-                .load(data)
+                .set(Downsampler.ALLOW_HARDWARE_CONFIG, isHardwareBitmap)
                 .skipMemoryCache(true)
                 .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .load(data)
                 .submit()
-                .get(1, TimeUnit.SECONDS)
+                .get()
+                .requireValid()
         }
     }
 
-    // Тестирование загрузки из файла
+    /**
+     * Measure UI load performance for file-based images and record results.
+     */
     suspend fun testFileLoadingInUI(
         imageFiles: List<File>,
         imageView: ImageView
     ): List<PerformanceResult> = withContext(Dispatchers.Default) {
         val results = mutableListOf<PerformanceResult>()
 
-        withContext(Dispatchers.Main) {
-            Glide.get(context).clearMemory()
-        }
-        withContext(Dispatchers.IO) {
-            Glide.get(context).clearDiskCache()
-        }
+        // Clear caches before testing
+        withContext(Dispatchers.Main) { Glide.get(context).clearMemory() }
+        withContext(Dispatchers.IO) { Glide.get(context).clearDiskCache() }
 
         for (file in imageFiles) {
             val startTime = System.nanoTime()
@@ -127,61 +141,56 @@ class GlidePerformanceTester(
                         })
                         .into(imageView)
 
-                    cont.invokeOnCancellation {
-                        target.request?.clear()
-                    }
+                    cont.invokeOnCancellation { target.request?.clear() }
                 }
             }
 
             val endTime = System.nanoTime()
-            val elapsedTime = (endTime - startTime) / 1_000_000.0
+            val elapsedMs = (endTime - startTime) / 1_000_000.0
 
             results.add(
                 PerformanceResult(
                     sourceType = "FILE",
                     fileName = file.name,
                     fileSize = file.length(),
-                    loadTimeMs = elapsedTime,
+                    loadTimeMs = elapsedMs,
                     iteration = 1,
                     success = success
                 )
             )
 
-            // Небольшая пауза между итерациями
+            // Pause briefly to avoid request overlap
             delay(100)
         }
 
-//        Log.d(TAG, "All iterations complete, returning results (${results.size} entries)")
         results
     }
 
-
-    // Тестирование параллельной загрузки из файла
+    /**
+     * Load all files in parallel into Bitmaps without interacting with UI.
+     */
     suspend fun testParallelFileLoading(
-        imageFiles: List<File>
+        imageFiles: List<File>,
+        isHardwareBitmap: Boolean
     ) = withContext(Dispatchers.Default) {
-
         imageFiles.map { file ->
             async {
-                // Glide: без ImageView, сразу в Bitmap
-                val future = Glide.with(context)
+                Glide.with(context)
                     .asBitmap()
                     .load(file.absolutePath)
+                    .set(Downsampler.ALLOW_HARDWARE_CONFIG, isHardwareBitmap)
                     .skipMemoryCache(true)
                     .diskCacheStrategy(DiskCacheStrategy.NONE)
-                    .submit() // запускает загрузку в фоне
-
-                // Блокируем текущую корутину до результата
-                future.get() // тут реально грузит
-
-                Glide.with(context).clear(future) // освобождаем таргет
+                    .submit()
+                    .get()
+                    .requireValid()
             }
-        }.awaitAll() // дождаться всех загрузок
-
+        }.awaitAll()
     }
 
-
-    // Тестирование загрузки из BLOB
+    /**
+     * Measure UI performance for blob-based images and record results.
+     */
     suspend fun testBlobLoadingInUI(
         imageIds: List<Long>,
         imageNames: List<String>,
@@ -189,36 +198,22 @@ class GlidePerformanceTester(
     ): List<PerformanceResult> = withContext(Dispatchers.Default) {
         val results = mutableListOf<PerformanceResult>()
 
-        withContext(Dispatchers.Main) {
-            Glide.get(context).clearMemory()
-        }
+        withContext(Dispatchers.Main) { Glide.get(context).clearMemory() }
+        withContext(Dispatchers.IO) { Glide.get(context).clearDiskCache() }
 
-        withContext(Dispatchers.IO) {
-            Glide.get(context).clearDiskCache()
-        }
-
-        // Тестируем каждое изображение
         for (i in imageIds.indices) {
-//            val id = imageIds[i]
             val name = imageNames[i]
-
-            // Получаем BLOB данные из БД
             val startTime = System.nanoTime()
 
-//                val imageBlob = repository.getImageBlobById(id) ?: continue
-//                val imageBlob = repository.getImageBlobByName(name) ?: continue
-//                val byteBuffer = ByteBuffer.wrap(imageBlob)
-
+            val imageBlob = repository.getImageBlobByName(name)
             var success = false
 
             withContext(Dispatchers.Main) {
                 suspendCancellableCoroutine<Unit> { cont ->
                     val target = Glide.with(context)
-//                            .load(BlobData(id, imageBlob))
-//                            .load(imageBlob)
-                        .load(SqlImageData(name))
+                        .load(imageBlob)
                         .diskCacheStrategy(DiskCacheStrategy.NONE)
-                        .skipMemoryCache(true) // Отключаем кэширование в памяти для честного теста
+                        .skipMemoryCache(true)
                         .listener(object : RequestListener<Drawable> {
                             override fun onLoadFailed(
                                 e: GlideException?,
@@ -229,7 +224,6 @@ class GlidePerformanceTester(
                                 cont.resume(Unit)
                                 return false
                             }
-
                             override fun onResourceReady(
                                 resource: Drawable?,
                                 model: Any?,
@@ -244,62 +238,64 @@ class GlidePerformanceTester(
                         })
                         .into(imageView)
 
-                    // если корутину отменили — очистим запрос
-                    cont.invokeOnCancellation {
-                        target.request?.clear()
-                    }
+                    cont.invokeOnCancellation { target.request?.clear() }
                 }
             }
 
             val endTime = System.nanoTime()
-            val elapsedTime = (endTime - startTime) / 1_000_000.0 // Время в миллисекундах
+            val elapsedMs = (endTime - startTime) / 1_000_000.0
 
             results.add(
                 PerformanceResult(
                     sourceType = "BLOB",
                     fileName = name,
-                    fileSize = 1, //imageBlob.size.toLong(),
-                    loadTimeMs = elapsedTime,
+                    fileSize = 1,
+                    loadTimeMs = elapsedMs,
                     iteration = 1,
                     success = success
                 )
             )
 
-            // Небольшая пауза между итерациями
             delay(100)
         }
 
         results
     }
 
-    // Тестирование параллельной загрузки из BLOB
+    /**
+     * Load all blob-based data models in parallel and validate results.
+     */
     suspend fun <Model> testParallelBlobLoading(
         imageIds: List<Long>,
         imageNames: List<String>,
-        model: Class<Model>
+        model: Class<Model>,
+        isHardwareBitmap: Boolean
     ) = withContext(Dispatchers.Default) {
         imageIds.mapIndexed { idx, id ->
             async {
                 val name = imageNames[idx]
-
-                val data = if (model == BlobData::class.java) {
-                    val imageBlob =
+                val data = when (model) {
+                    BlobData::class.java -> {
+                        val imageBlob = repository.getImageBlobByName(name)
+                            ?: throw RuntimeException("Failed to retrieve blob (id=$id, name=$name)")
+                        BlobData(id, imageBlob)
+                    }
+                    ByteArray::class.java -> {
                         repository.getImageBlobByName(name)
-                            ?: throw RuntimeException("get image blob failed (id=$id, name=$name)")
-                    BlobData(id, imageBlob)
-                } else {
-                    SqlImageData(name)
+                            ?: throw RuntimeException("Failed to retrieve blob (id=$id, name=$name)")
+                    }
+                    else -> SqlImageData(name)
                 }
 
-                // Glide: без ImageView, сразу в Bitmap
-                val future = Glide.with(context)
+                Glide.with(context)
                     .asBitmap()
                     .load(data)
+                    .set(Downsampler.ALLOW_HARDWARE_CONFIG, isHardwareBitmap)
                     .skipMemoryCache(true)
                     .diskCacheStrategy(DiskCacheStrategy.NONE)
-                    .submit() // запускает загрузку в фоне
-
-                Glide.with(context).clear(future) // освобождаем таргет
+                    .submit()
+                    .get()
+                    .requireValid()
             }
         }.awaitAll()
     }
