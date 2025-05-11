@@ -30,28 +30,28 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-pods4k = { group = "com.danrusu.pods4k", name= "pods4k", version.ref="pods4k"}
+#pods4k = { group = "com.danrusu.pods4k", name= "pods4k", version.ref="pods4k"}
 
 # room
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+#room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 room-common = { group = "androidx.room", name = "room-common", version.ref = "room" }
 room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "room" }
-room-paging = { group = "androidx.room", name = "room-paging",  version.ref = "room"}
+#room-paging = { group = "androidx.room", name = "room-paging",  version.ref = "room"}
 
 # sqlite
-sqlite-framework ={ group = "androidx.sqlite", name = "sqlite-framework",  version.ref = "sqlite"}
+#sqlite-framework ={ group = "androidx.sqlite", name = "sqlite-framework",  version.ref = "sqlite"}
 sqlite-ktx={ group = "androidx.sqlite", name = "sqlite-ktx",  version.ref = "sqlite"}
 sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
 
 # glide
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 glide-ksp = { group = "com.github.bumptech.glide", name = "ksp", version.ref = "glide" }
-glide-cronet = { group = "com.github.bumptech.glide", name = "cronet-integration", version.ref = "glide" }
+#glide-cronet = { group = "com.github.bumptech.glide", name = "cronet-integration", version.ref = "glide" }
 #glide-okhttp = { group = "com.github.bumptech.glide", name = "okhttp3-integration", version.ref = "glide" }
-glide-recyclerview = { group = "com.github.bumptech.glide", name = "recyclerview-integration", version.ref = "glide" }
+#glide-recyclerview = { group = "com.github.bumptech.glide", name = "recyclerview-integration", version.ref = "glide" }
 
 # coroutines
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref="coroutines" }

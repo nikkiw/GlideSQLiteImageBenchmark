@@ -54,7 +54,7 @@ class BlobDataFetcherOkio(
     override fun cleanup() {
         try {
             stream?.close()
-        } catch (ignored: IOException) {
+        } catch (_: IOException) {
             // Ignore errors during cleanup
         }
     }

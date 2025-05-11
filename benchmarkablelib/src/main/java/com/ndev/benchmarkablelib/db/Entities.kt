@@ -1,6 +1,5 @@
 package com.ndev.benchmarkablelib.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -10,9 +9,6 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
-import androidx.sqlite.db.SupportSQLiteOpenHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import java.io.File
 import java.io.FileOutputStream
@@ -47,56 +43,6 @@ data class ImageEntity(
     }
 }
 
-class CustomOpenHelperFactory : SupportSQLiteOpenHelper.Factory {
-    private val delegate = FrameworkSQLiteOpenHelperFactory()
-
-    override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper {
-        val wrappedCallback =
-            object : SupportSQLiteOpenHelper.Callback(configuration.callback.version) {
-                override fun onConfigure(db: SupportSQLiteDatabase) {
-                    Log.d("AppDatabase", "onConfigure")
-
-                    // Set page_size before creating tables
-                    db.query("PRAGMA page_size = 8192;").moveToFirst()
-                    db.query("PRAGMA cache_size = -2000;")
-                        .moveToFirst()   // "-2000" — 2000 pages × 32768 bytes = ~64 MB cache
-                    db.query("PRAGMA temp_store = MEMORY;")
-                        .moveToFirst() // temporary tables/indices in RAM
-                    db.query("PRAGMA mmap_size = 268435456;").moveToFirst() // for example, 256 MB
-                    db.query("VACUUM;")
-                    configuration.callback.onConfigure(db)
-                }
-
-                override fun onCreate(db: SupportSQLiteDatabase) {
-                    // VACUUM to apply page_size
-                    Log.d("AppDatabase", "onCreate")
-
-                    configuration.callback.onCreate(db)
-                }
-
-                override fun onUpgrade(
-                    db: SupportSQLiteDatabase,
-                    oldVersion: Int,
-                    newVersion: Int
-                ) {
-                    configuration.callback.onUpgrade(db, oldVersion, newVersion)
-                }
-
-                override fun onOpen(db: SupportSQLiteDatabase) {
-                    configuration.callback.onOpen(db)
-                }
-            }
-
-        val newConfig = SupportSQLiteOpenHelper.Configuration.builder(configuration.context)
-            .name(configuration.name)
-            .callback(wrappedCallback)
-            .build()
-
-        return delegate.create(newConfig)
-    }
-}
-
-
 @Dao
 interface ImageDao {
     @Insert
@@ -123,7 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        fun reset(){
+        fun reset() {
             INSTANCE = null
         }
 

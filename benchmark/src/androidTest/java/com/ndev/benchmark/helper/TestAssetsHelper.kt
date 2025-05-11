@@ -26,7 +26,7 @@ object TestAssetsHelper {
 
         // Draw some shapes with different colors based on seed
         val random = java.util.Random(seed.toLong())
-        for (i in 0..20) {
+        (0..20).forEach { i ->
             paint.color = Color.rgb(
                 random.nextInt(256),
                 random.nextInt(256),
